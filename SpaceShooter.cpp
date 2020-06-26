@@ -14,6 +14,8 @@ bool topCollision = false;
 bool bottomCollision = false;
 int npcTimer = 0;
 int npcDirection = 1; // 0 up, 1 left, 2 down, 3 left
+int nScore = 0;
+
 
 struct sPixel
 {
@@ -28,11 +30,13 @@ struct Player {
 
 struct Enemy {
 	sPixel pos;
-	int health = 5;
+	int health = 1;
 	Enemy(int x, int y) {
 		pos = { x,y };
 	}
-	
+	~Enemy() {
+		nScore++;
+	}
 };
 
 
@@ -59,6 +63,10 @@ int main()
 	Enemy enemy8(90, 5);
 	vector<sPixel> bullets;
 	vector<Enemy> enemies;
+	bool fired = false;
+	bool zKeyDownOld = false;
+	
+	
 
 	enemies.push_back(enemy1);
 	enemies.push_back(enemy2);
@@ -68,11 +76,8 @@ int main()
 	enemies.push_back(enemy6);
 	enemies.push_back(enemy7);
 	enemies.push_back(enemy8);
-
-	bool fired = false;
-
-
-
+	nScore = 0;
+	
 
 	while (1) {
 		this_thread::sleep_for(50ms);
@@ -88,6 +93,8 @@ int main()
 		bKeyUp = (0x8000 & GetAsyncKeyState((unsigned char)('\x26'))) != 0;
 		bKeyDown = (0x8000 & GetAsyncKeyState((unsigned char)('\x28'))) != 0;
 		zKeyDown = (0x8000 & GetAsyncKeyState((unsigned char)('\x5A'))) != 0;
+
+
 
 		//Player Collisions
 		if (bKeyRight && (rightCollision == false))
@@ -109,15 +116,19 @@ int main()
 		{
 			player.pos.y += 1;
 		}
+		
+		
+
 
 		// player shoots
-		if (zKeyDown)
+		if (zKeyDown && !zKeyDownOld)
 		{
 			fired = true;
 			sPixel Bullet = { player.pos.x,player.pos.y };
 			bullets.push_back(Bullet);
 		}
 
+		zKeyDownOld = zKeyDown;
 
 		if (player.pos.x == 0)
 			leftCollision = true;
@@ -161,11 +172,19 @@ int main()
 			
 		}
 
+
+		//vector<int> bulletLocations;
+
 		for (auto& bullet : bullets) // access by reference to avoid copying
 		{
 			if (bullet.x != -1 && bullet.y != -1) {
 				bullet.y -= 1;
-
+				for (auto& enemy : enemies) // access by reference to avoid copying
+				{
+					if (enemy.pos.x == bullet.x && enemy.pos.y == bullet.y && enemy.health != 0)
+						enemy.health -= 1;
+				}
+				
 			}
 			//if (bullet.y == -1) {
 			//	bullets.erase(*bullet);
@@ -177,12 +196,22 @@ int main()
 			std::remove_if(
 				bullets.begin(),
 				bullets.end(),
-				[](auto& p) { return p.y == -1; }
+				[](auto& bullet) { return bullet.y == -1; }
 			),
 			bullets.end()
 		);
+		enemies.erase(
+			std::remove_if(
+				enemies.begin(),
+				enemies.end(),
+				[](auto& enemy) { 
+					return enemy.health == 0; 
+				}
+			),
+			enemies.end()
+		);
 
-		// ==== DISPLAY
+		// ==== DISPLAY ========================================================
 
 		// First we clear the screen
 		for (int i = 0; i < nScreenWidth * nScreenHeight; i++) screen[i] = L' ';
@@ -192,7 +221,7 @@ int main()
 		{
 			screen[2 * nScreenWidth + i] = L'_';
 		}
-		wsprintf(&screen[nScreenWidth + 5], L"STARSHOOTER                                                                   CONTROLS: left, down, right, up, z");
+		wsprintf(&screen[nScreenWidth + 5], L"STARSHOOTER                      SCORE: %d                                    CONTROLS: left, down, right, up, z", nScore);
 
 		// players, Enemies, and Bullets are drawn
 		for (auto& enemy : enemies) // access by reference to avoid copying
@@ -213,7 +242,7 @@ int main()
 				screen[nScreenWidth * nScreenHeight] = L' ';
 			}
 		}
-
+		zKeyDown = false;
 		// Display Frame
 		WriteConsoleOutputCharacter(hConsole, screen, nScreenWidth * nScreenHeight, { 0,0 }, &dwBytesWritten); // we give it the HANDLE, the buffer, the bytes, the coordinate where text starts writing
 	}
