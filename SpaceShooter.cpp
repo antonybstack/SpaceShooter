@@ -13,12 +13,28 @@ bool rightCollision = false;
 bool topCollision = false;
 bool bottomCollision = false;
 int npcTimer = 0;
+int npcDirection = 1; // 0 up, 1 left, 2 down, 3 left
 
 struct sPixel
 {
 	int x;
 	int y;
 };
+
+struct Player {
+	int health = 5;
+	sPixel pos = { 60,25 };
+};
+
+struct Enemy {
+	sPixel pos;
+	int health = 5;
+	Enemy(int x, int y) {
+		pos = { x,y };
+	}
+	
+};
+
 
 int main()
 
@@ -32,10 +48,26 @@ int main()
 	DWORD dwBytesWritten = 0;
 
 	// create game objects
-	sPixel Player = { 60,25 };
-	sPixel Enemy1 = { 50,5 };
-	sPixel Enemy2 = { 70,5 };
+	Player player;
+	Enemy enemy1(20,5);
+	Enemy enemy2(30, 5);
+	Enemy enemy3(40, 5);
+	Enemy enemy4(50, 5);
+	Enemy enemy5(60, 5);
+	Enemy enemy6(70, 5);
+	Enemy enemy7(80, 5);
+	Enemy enemy8(90, 5);
 	vector<sPixel> bullets;
+	vector<Enemy> enemies;
+
+	enemies.push_back(enemy1);
+	enemies.push_back(enemy2);
+	enemies.push_back(enemy3);
+	enemies.push_back(enemy4);
+	enemies.push_back(enemy5);
+	enemies.push_back(enemy6);
+	enemies.push_back(enemy7);
+	enemies.push_back(enemy8);
 
 	bool fired = false;
 
@@ -60,57 +92,73 @@ int main()
 		//Player Collisions
 		if (bKeyRight && (rightCollision == false))
 		{
-			Player.x += 1;
+			player.pos.x += 1;
 		}
 
 		if (bKeyLeft && (leftCollision == false))
 		{
-			Player.x -= 1;
+			player.pos.x -= 1;
 		}
 
 		if (bKeyUp && (topCollision == false))
 		{
-			Player.y -= 1;
+			player.pos.y -= 1;
 		}
 
 		if (bKeyDown && (bottomCollision == false))
 		{
-			Player.y += 1;
+			player.pos.y += 1;
 		}
 
-		// Player shoots
+		// player shoots
 		if (zKeyDown)
 		{
 			fired = true;
-			sPixel Bullet = { Player.x,Player.y };
+			sPixel Bullet = { player.pos.x,player.pos.y };
 			bullets.push_back(Bullet);
 		}
 
 
-		if (Player.x == 0)
+		if (player.pos.x == 0)
 			leftCollision = true;
 		else {
 			leftCollision = false;
 		}
-		if (Player.x == nScreenWidth - 1)
+		if (player.pos.x == nScreenWidth - 1)
 			rightCollision = true;
 		else {
 			rightCollision = false;
 		}
-		if (Player.y == 22)
+		if (player.pos.y == 22)
 			topCollision = true;
 		else {
 			topCollision = false;
 		}
-		if (Player.y == nScreenHeight - 1)
+		if (player.pos.y == nScreenHeight - 1)
 			bottomCollision = true;
 		else {
 			bottomCollision = false;
 		}
 
-		if (npcTimer % 5 == 0) {
-			Enemy1.x += 1;
-			Enemy2.x += 1;
+		if (npcTimer % 3 == 0) {
+			if (npcTimer <= 24) {
+				for (auto& enemy : enemies) // access by reference to avoid copying
+				{
+					enemy.pos.x += 1;
+				}
+				
+			}
+			else {
+				for (auto& enemy : enemies) // access by reference to avoid copying
+				{
+					enemy.pos.x -= 1;
+				}
+			}
+			if (npcTimer == 48) {
+				npcTimer = 0;
+			}
+			
+			
 		}
 
 		for (auto& bullet : bullets) // access by reference to avoid copying
@@ -119,7 +167,20 @@ int main()
 				bullet.y -= 1;
 
 			}
+			//if (bullet.y == -1) {
+			//	bullets.erase(*bullet);
+
+			//}
 		}
+
+		bullets.erase(
+			std::remove_if(
+				bullets.begin(),
+				bullets.end(),
+				[](auto& p) { return p.y == -1; }
+			),
+			bullets.end()
+		);
 
 		// ==== DISPLAY
 
@@ -131,13 +192,17 @@ int main()
 		{
 			screen[2 * nScreenWidth + i] = L'_';
 		}
-		wsprintf(&screen[nScreenWidth + 5], L"MY GAME                                                                     CONTROLS: left, down, right, up, z");
+		wsprintf(&screen[nScreenWidth + 5], L"STARSHOOTER                                                                   CONTROLS: left, down, right, up, z");
 
-		// Players, Enemies, and Bullets are drawn
-		screen[Enemy1.y * nScreenWidth + Enemy1.x] = L'W';
-		screen[Enemy2.y * nScreenWidth + Enemy2.x] = L'W';
+		// players, Enemies, and Bullets are drawn
+		for (auto& enemy : enemies) // access by reference to avoid copying
+		{
+			screen[enemy.pos.y * nScreenWidth + enemy.pos.x] = L'W';
+		}
+		//screen[enemy1.pos.y * nScreenWidth + enemy1.pos.x] = L'W';
+		//screen[enemy2.pos.y * nScreenWidth + enemy2.pos.x] = L'W';
 
-		screen[Player.y * nScreenWidth + Player.x] = L'M';
+		screen[player.pos.y * nScreenWidth + player.pos.x] = L'M';
 
 		for (auto& bullet : bullets) // access by reference to avoid copying
 		{
