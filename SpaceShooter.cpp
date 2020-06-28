@@ -20,26 +20,88 @@ int npcDirection = 1; // 0 up, 1 left, 2 down, 3 left
 int nScore = 0;
 string debug = "hello";
 int debug1 = 0;
+wchar_t* screen;
 
-struct sPixel
+struct Coordinate
 {
 	int x;
 	int y;
 };
 
-struct Player {
-	int health = 5;
-	sPixel pos = { 60,25 };
-};
-
-struct Enemy {
-	sPixel pos;
-	int health = 1;
-	Enemy(int x, int y) {
+struct GameObject {
+	void setHealth(int h) {
+		health = h;
+	}
+	void setPos(int x, int y) {
 		pos = { x,y };
 	}
-	~Enemy() {
-		nScore+= 100;
+	int health;
+	Coordinate pos;
+	int level;
+	int size;
+	// color
+};
+
+struct Player : public GameObject {
+public:
+	void setHealth(int h) {
+		health = h;
+	}
+	void setLevel(int l) {
+		level = l;
+	}
+	void setSize(int s) {
+		size = s;
+	}
+	Player() {
+		pos = { 60, 25 };
+		health = 3;
+		int size = 1;
+	}
+	void draw() {
+		screen[this->pos.y * nScreenWidth + this->pos.x - 2] = L'<';
+		screen[this->pos.y * nScreenWidth + this->pos.x - 1] = L'/';
+		screen[this->pos.y * nScreenWidth + this->pos.x] = L'*';
+		screen[this->pos.y * nScreenWidth + this->pos.x + 1] = L'\\';
+		screen[this->pos.y * nScreenWidth + this->pos.x + 2] = L'>';
+	}
+};
+
+struct LowEnemy : public GameObject {
+	LowEnemy(int x, int y) {
+		pos = { x,y };
+		health = 1;
+		size = 1;
+	}
+	~LowEnemy() {
+		nScore += 100;
+	}
+	void draw() {
+		screen[this->pos.y * nScreenWidth + this->pos.x - 1] = L'\\';
+		screen[this->pos.y * nScreenWidth + this->pos.x] = L'0';
+		screen[this->pos.y * nScreenWidth + this->pos.x + 1] = L'/';
+	}
+};
+
+struct MedEnemy : public GameObject {
+	MedEnemy(int x, int y) {
+		pos = { x,y };
+		health = 3;
+		size = 1;
+	}
+	~MedEnemy() {
+		nScore += 500;
+	}
+};
+
+struct HighEnemy : public GameObject {
+	HighEnemy(int x, int y) {
+		pos = { x,y };
+		health = 5;
+		size = 1;
+	}
+	~HighEnemy() {
+		nScore += 1000;
 	}
 };
 
@@ -51,26 +113,22 @@ struct Enemy {
    OutputDebugStringW( os_.str().c_str() );  \
 }
 
-
 int main()
 {
 	// detects memory leaks and outputs after program terminates
-	
-
 	//visual studio output for debugging purposes
 	//DBOUT("The value of x is " << debug.c_str()); //if variable is string
 	//DBOUT("The value of x is " << debug1); //if variable is int
 
-
 	// Create Screen Buffer
-	wchar_t* screen = new wchar_t[nScreenWidth * nScreenHeight]; // creates 2d array of the product of the dimensions
+	screen = new wchar_t[nScreenWidth * nScreenHeight]; // creates 2d array of the product of the dimensions
 	for (int i = 0; i < nScreenWidth * nScreenHeight; i++) screen[i] = L' ';
 	HANDLE hConsole = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
 	DWORD mAttributes = 0x0F | COMMON_LVB_UNDERSCORE;
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 1);
     SetConsoleActiveScreenBuffer(hConsole); // we tell this buffer that it will be the target of our console
 	int color = 1;
-	DWORD dwBytesWritten = 0; 
+	DWORD dwBytesWritten = 0;
 
 	/*  FOR FUTURE COLOR IMPLEMENTATION
 	DWORD NumberOfCharsWritten;
@@ -83,21 +141,18 @@ int main()
 	// create game objects
 	Player player;
 	//Enemy * enemy1= new Enemy(20,5);
-	vector<sPixel> bullets;
-	vector<Enemy> enemies;
+	vector<Coordinate> bullets;
+	vector<LowEnemy> lowEnemies;
 	bool zKeyDownOld = false;
 
-
-
-		//enemies.push_back(*enemy1);
-	enemies.push_back(Enemy(20,5));
-	enemies.push_back(Enemy(30, 5));
-	enemies.push_back(Enemy(40, 5));
-	enemies.push_back(Enemy(50, 5));
-	enemies.push_back(Enemy(60, 5));
-	enemies.push_back(Enemy(70, 5));
-	enemies.push_back(Enemy(80, 5));
-	enemies.push_back(Enemy(90, 5));
+	lowEnemies.push_back(LowEnemy(20, 5));
+	lowEnemies.push_back(LowEnemy(30, 5));
+	lowEnemies.push_back(LowEnemy(40, 5));
+	lowEnemies.push_back(LowEnemy(50, 5));
+	lowEnemies.push_back(LowEnemy(60, 5));
+	lowEnemies.push_back(LowEnemy(70, 5));
+	lowEnemies.push_back(LowEnemy(80, 5));
+	lowEnemies.push_back(LowEnemy(90, 5));
 
 	//delete enemy1;
 	//enemy1 = nullptr;
@@ -148,7 +203,7 @@ int main()
 		// player shoots
 		if (zKeyDown && !zKeyDownOld)
 		{
-			sPixel Bullet = { player.pos.x,player.pos.y };
+			Coordinate Bullet = { player.pos.x,player.pos.y };
 			bullets.push_back(Bullet);
 		}
 
@@ -175,15 +230,28 @@ int main()
 			bottomCollision = false;
 		}
 
+		for (auto& bullet : bullets) // access by reference to avoid copying
+		{
+			if (bullet.x != -1 && bullet.y != -1) {
+				bullet.y -= 1;
+				for (auto& enemy : lowEnemies) // access by reference to avoid copying
+				{
+					if ((bullet.x >= enemy.pos.x - enemy.size && bullet.x <= enemy.pos.x + enemy.size) && enemy.pos.y == bullet.y && enemy.health != 0)
+						enemy.health -= 1;
+				}
+			}
+		}
+
+
 		if (npcTimer % 3 == 0) {
 			if (npcTimer <= 24) {
-				for (auto& enemy : enemies) // access by reference to avoid copying
+				for (auto& enemy : lowEnemies) // access by reference to avoid copying
 				{
 					enemy.pos.x += 1;
 				}
 			}
 			else {
-				for (auto& enemy : enemies) // access by reference to avoid copying
+				for (auto& enemy : lowEnemies) // access by reference to avoid copying
 				{
 					enemy.pos.x -= 1;
 				}
@@ -193,17 +261,7 @@ int main()
 			}
 		}
 
-		for (auto& bullet : bullets) // access by reference to avoid copying
-		{
-			if (bullet.x != -1 && bullet.y != -1) {
-				bullet.y -= 1;
-				for (auto& enemy : enemies) // access by reference to avoid copying
-				{
-					if ((enemy.pos.x >= bullet.x - 1 && enemy.pos.x <= bullet.x + 1) && enemy.pos.y == bullet.y && enemy.health != 0)
-						enemy.health -= 1;
-				}
-			}
-		}
+		
 
 		bullets.erase(
 			std::remove_if(
@@ -213,15 +271,15 @@ int main()
 			),
 			bullets.end()
 		);
-		enemies.erase(
+		lowEnemies.erase(
 			std::remove_if(
-				enemies.begin(),
-				enemies.end(),
+				lowEnemies.begin(),
+				lowEnemies.end(),
 				[](auto& enemy) { 
 					return enemy.health == 0; 
 				}
 			),
-			enemies.end()
+			lowEnemies.end()
 		);
 
 		// ==== DISPLAY ========================================================
@@ -240,21 +298,14 @@ int main()
 		// wsprintf(&screen[nScreenWidth *2], L"debug info: %d", bullets.size());
 
 		// players, Enemies, and Bullets are drawn
-		for (auto& enemy : enemies) // access by reference to avoid copying
+		for (auto& enemy : lowEnemies) // access by reference to avoid copying
 		{
-			screen[enemy.pos.y * nScreenWidth + enemy.pos.x - 1] = L'\\';
-			screen[enemy.pos.y * nScreenWidth + enemy.pos.x] = L'0';
-			screen[enemy.pos.y * nScreenWidth + enemy.pos.x + 1] = L'/';
+			enemy.draw();
 		}
-
-		screen[player.pos.y * nScreenWidth + (player.pos.x - 2)] = L'<';
 		
-		screen[player.pos.y * nScreenWidth + (player.pos.x-1)] = L'/';
-		screen[player.pos.y * nScreenWidth + (player.pos.x)] = L'*';
-		screen[player.pos.y * nScreenWidth + (player.pos.x+1)] = L'\\';
-		screen[player.pos.y * nScreenWidth + (player.pos.x+2)] = L'>';
+		player.draw();
 
-		
+
 		for (auto& bullet : bullets) // access by reference to avoid copying
 		{
 			if (bullet.y != -1 && bullet.y > 2) {
