@@ -1,0 +1,2 @@
+C:\c++\SpaceShooter\x64\Debug\SpaceShooter.exe
+C:\c++\SpaceShooter\x64\Debug\SpaceShooter.pdb
