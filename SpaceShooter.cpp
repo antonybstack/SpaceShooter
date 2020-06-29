@@ -24,7 +24,7 @@ bool rightCollision = false;
 bool topCollision = false;
 bool bottomCollision = false;
 unsigned short delayTimer = 0;
-unsigned short gameLevel = 3;
+unsigned short gameLevel = 0;
 bool gameStart = false;
 bool gameComplete = false;
 bool gamePause = false;
@@ -340,6 +340,16 @@ int main()
 			coordinate.X = 0;
 			coordinate.Y = 14;
 			WORD wColor = FOREGROUND_GREEN | FOREGROUND_INTENSITY | 0;
+			FillConsoleOutputAttribute(
+				hConsole,          // screen buffer handle 
+				wColor,           // color to fill with 
+				120,            // number of cells to fill 
+				coordinate,            // first cell to write to 
+				&cWritten);       // actual number written 
+			coordinate.X = 0;
+			coordinate.Y = 16;
+
+			wColor = FOREGROUND_BLUE | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY | 0;
 			FillConsoleOutputAttribute(
 				hConsole,          // screen buffer handle 
 				wColor,           // color to fill with 
